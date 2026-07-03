@@ -48,9 +48,14 @@ async def run_score(
     search_purpose: Optional[str] = None,
     price_tolerance_percent: Optional[int] = None,
     target_price: Optional[int] = None,
+    weights: Optional[Dict[str, float]] = None,
 ) -> List[ScoredProduct]:
     """
     score_agent 핵심 로직.
+
+    weights가 주어지면 내부 LLM 가중치 조정 호출을 스킵한다.
+    pipeline.score_node에서 weights + enabled_agents를 한 번에 결정한 뒤
+    검증된 weights를 이 파라미터로 전달하는 용도.
 
     target_price 없으면 후보 평균 lowest_price로 추정.
     candidate_ids 비어있으면 빈 리스트 반환.
@@ -73,15 +78,16 @@ async def run_score(
             prices.sort()
             target_price = prices[len(prices) // 2]
 
-    # 2. 가중치 보정 (Qwen-Plus 호출)
-    llm = get_qwen_llm()
-    raw_weights = await llm.chat_json(
-        system=WEIGHT_ADJUSTMENT_SYSTEM,
-        user=build_weight_adjustment_user_prompt(
-            search_purpose, price_tolerance_percent
-        ),
-    )
-    weights = validate_and_normalize(raw_weights)
+    # 2. 가중치 결정 — 외부에서 주입되지 않으면 내부 LLM 호출
+    if weights is None:
+        llm = get_qwen_llm()
+        raw_weights = await llm.chat_json(
+            system=WEIGHT_ADJUSTMENT_SYSTEM,
+            user=build_weight_adjustment_user_prompt(
+                search_purpose, price_tolerance_percent
+            ),
+        )
+        weights = validate_and_normalize(raw_weights)
 
     # 3. candidate별 4요소 계산 → totalScore
     results: List[ScoredProduct] = []

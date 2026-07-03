@@ -1,14 +1,11 @@
 from __future__ import annotations
 
 import asyncio
-import json
-from datetime import datetime, timezone
 
 from fastapi import APIRouter, BackgroundTasks
 from pydantic import BaseModel
-from langchain_core.messages import HumanMessage
 
-from graph.action_model import agent_graph
+from graph.pipeline import pipeline
 from services import job_updater
 
 router = APIRouter()
@@ -28,36 +25,6 @@ class AgentRunRequest(BaseModel):
     priceTolerancePercent: int = 10
     userProfile: UserProfileInput = UserProfileInput()
 
-
-def _build_context_message(req: AgentRunRequest) -> str:
-    profile_json = json.dumps(
-        {
-            "skinType": req.userProfile.skinType,
-            "skinConcerns": req.userProfile.skinConcerns,
-            "personalColor": req.userProfile.personalColor,
-        },
-        ensure_ascii=False,
-    )
-    return (
-        f"작업 ID: {req.jobId}\n"
-        f"사용자 ID: {req.userId}\n"
-        f"기준 상품 ID: {req.baseProductId or ''}\n"
-        f"구매 목적: {req.searchPurpose or ''}\n"
-        f"가격 허용 범위: {req.priceTolerancePercent}\n"
-        f"사용자 프로필: {profile_json}\n\n"
-        "화장품 추천을 시작하세요."
-    )
-
-
-def _write_result(job_id: str, result: dict) -> None:
-    from db.supabase_client import get_supabase
-    get_supabase().table("recommendation_jobs").update({
-        "result": result,
-        "status": "COMPLETED",
-        "step": "루틴 생성",
-        "progress": 100,
-        "updated_at": datetime.now(timezone.utc).isoformat(),
-    }).eq("id", job_id).execute()
 
 
 async def _save_user_context(req: AgentRunRequest) -> None:
@@ -108,10 +75,9 @@ async def _run_agent(req: AgentRunRequest) -> None:
         await job_updater.update(req.jobId, status="IN_PROGRESS", progress=0)
 
         initial_state = {
-            "messages": [HumanMessage(content=_build_context_message(req))],
             "job_id": req.jobId,
             "user_id": req.userId,
-            "base_product_id": req.baseProductId,
+            "base_product_id": req.baseProductId or "",
             "search_purpose": req.searchPurpose,
             "price_tolerance_percent": req.priceTolerancePercent,
             "user_profile": {
@@ -121,33 +87,15 @@ async def _run_agent(req: AgentRunRequest) -> None:
             },
             "candidates": [],
             "intent_vector": [],
-            "scores": [],
-            "alternatives": [],
-            "collaborative_results": [],
+            "score_result": [],
+            "enabled_agents": [],
+            "alternative_result": [],
+            "collaborative_result": [],
             "final_result": None,
         }
 
-        final_state = await agent_graph.ainvoke(initial_state)
-
-        last_content = final_state["messages"][-1].content.strip()
-        if last_content.startswith("```"):
-            last_content = last_content.strip("`").removeprefix("json").strip()
-        result = json.loads(last_content)
-
-        # LLM이 product 배열을 임의로 수정할 수 있으므로 tool 실제 결과로 덮어씀
-        from agents.tools import _collaborative_store, _alternative_store, _score_store
-        job_id = req.jobId
-        if job_id in _collaborative_store:
-            result["similarUserProducts"] = _collaborative_store.pop(job_id)
-        if job_id in _alternative_store:
-            result["alternativeProducts"] = _alternative_store.pop(job_id)
-        if job_id in _score_store:
-            scores = _score_store.pop(job_id)
-            if scores:
-                top = max(scores, key=lambda x: x.get("totalScore", 0))
-                result["matchScore"] = min(100, int(top.get("totalScore", 0)))
-
-        await asyncio.to_thread(_write_result, req.jobId, result)
+        await pipeline.ainvoke(initial_state)
+        # DB 저장(COMPLETED)은 merge_node 내부에서 처리됨
         await _save_user_context(req)
 
     except Exception as e:

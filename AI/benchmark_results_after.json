@@ -1,0 +1,73 @@
+{
+  "rounds": 10,
+  "product_id": "19e7105a-b848-4e24-8088-c1ce3761d864",
+  "results": [
+    {
+      "round": 1,
+      "job_id": "9bfef6ab-aabc-4d65-90a3-90db57670de8",
+      "status": "COMPLETED",
+      "elapsed_s": 15.526
+    },
+    {
+      "round": 2,
+      "job_id": "521fb30b-5393-47d1-9b62-b1b58199c9e9",
+      "status": "COMPLETED",
+      "elapsed_s": 9.329
+    },
+    {
+      "round": 3,
+      "job_id": "647be9da-1d61-47a2-92db-4905576a17d7",
+      "status": "COMPLETED",
+      "elapsed_s": 6.194
+    },
+    {
+      "round": 4,
+      "job_id": "27d9946d-551a-4b1a-9b65-f288b48adefd",
+      "status": "COMPLETED",
+      "elapsed_s": 6.195
+    },
+    {
+      "round": 5,
+      "job_id": "12519456-2200-4353-b02a-f9f092393098",
+      "status": "COMPLETED",
+      "elapsed_s": 9.497
+    },
+    {
+      "round": 6,
+      "job_id": "4b771147-4934-4050-bc41-35d130cd1ca6",
+      "status": "COMPLETED",
+      "elapsed_s": 9.552
+    },
+    {
+      "round": 7,
+      "job_id": "b2b30cde-60cf-4243-bfe8-7f2e995a777b",
+      "status": "COMPLETED",
+      "elapsed_s": 9.255
+    },
+    {
+      "round": 8,
+      "job_id": "85e9eac8-2629-42cc-b53b-2765de669bff",
+      "status": "COMPLETED",
+      "elapsed_s": 9.255
+    },
+    {
+      "round": 9,
+      "job_id": "2827ecd8-e59d-4215-82da-96f6f1853926",
+      "status": "COMPLETED",
+      "elapsed_s": 9.284
+    },
+    {
+      "round": 10,
+      "job_id": "20c787a2-825d-4fe8-bd18-005223ce8997",
+      "status": "COMPLETED",
+      "elapsed_s": 9.247
+    }
+  ],
+  "summary": {
+    "success_count": 10,
+    "mean_s": 9.333,
+    "min_s": 6.194,
+    "max_s": 15.526,
+    "stdev_s": 2.542
+  }
+}
